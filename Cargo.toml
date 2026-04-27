@@ -1,0 +1,32 @@
+[package]
+name = "tg-mcp-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+grammers-client = "0.9.0"
+grammers-session = "0.9.0"
+tokio = { version = "1.52.1", features = ["full"] }
+tokio-util = "0.7.18"
+serde = { version = "1.0.149", features = ["derive"] }
+serde_json = "1.0.149"
+schemars = "1.0"
+clap = { version = "4.6.1", features = ["derive"] }
+rmcp = { version = "1.5.0", features = [
+    "server",
+    "macros",
+    "client",
+    "transport-io",
+    "transport-streamable-http-server",
+    "auth",
+    "elicitation",
+    "schemars",
+] }
+axum = { version = "0.8.9", features = ["macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "std",
+    "fmt",
+] }
