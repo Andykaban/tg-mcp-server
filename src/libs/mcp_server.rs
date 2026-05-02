@@ -1,5 +1,5 @@
 use crate::libs::tg_client::TgClient;
-use crate::libs::tg_structs::{GetMessagesRequest, GetPeerRequest};
+use crate::libs::tg_structs::{GetMessagesRequest, GetPeerRequest, GetSearchMessagesRequest};
 use rmcp::ServerHandler;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::transport::streamable_http_server::{
@@ -105,6 +105,25 @@ impl TelegramMcpServer {
     }
 
     #[tool(
+        description = "Returns the number of Telegram text messages from the specified peer that match the provided search query."
+    )]
+    async fn search_text_messages_count(
+        &self,
+        Parameters(req): Parameters<GetSearchMessagesRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let total_search_count = self
+            .client
+            .get_search_messages_count(req.peer.kind, req.peer.username, req.peer.id, req.query)
+            .await;
+        match total_search_count {
+            Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"total_search_count": cnt}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
         description = "Returns text messages from the specified Telegram peer. The peer can be resolved by username or id according to the request fields. On success, returns JSON in the form {\"text_messages\": [...]}, where each item contains message_id, sender_id, sender_username, sender_full_name, and text."
     )]
     async fn get_text_messages_for_peer(
@@ -113,9 +132,34 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let text_messages = self
             .client
-            .get_messages(req.kind, req.username, req.peer_id, req.limit)
+            .get_messages(req.peer.kind, req.peer.username, req.peer.id, req.limit)
             .await;
         match text_messages {
+            Ok(t) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"text_messages": t}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Searches text messages in the specified Telegram peer and returns only messages that satisfy the provided query expression."
+    )]
+    async fn search_text_messages(
+        &self,
+        Parameters(req): Parameters<GetSearchMessagesRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let search_messages = self
+            .client
+            .get_search_messages(
+                req.peer.kind,
+                req.peer.username,
+                req.peer.id,
+                req.query,
+                req.limit,
+            )
+            .await;
+        match search_messages {
             Ok(t) => Ok(CallToolResult::success(vec![Content::text(
                 json!({"text_messages": t}).to_string(),
             )])),

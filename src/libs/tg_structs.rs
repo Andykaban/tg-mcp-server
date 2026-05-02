@@ -1,6 +1,10 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+fn default_limit() -> usize {
+    50
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct TgDialogOutputItem {
     pub dialog_id: i64,
@@ -34,18 +38,30 @@ pub struct GetPeerRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetMessagesRequest {
-    #[schemars(description = "How to resolve the Telegram peer: 'username' or 'id'.")]
-    pub kind: String,
-
     #[schemars(
-        description = "Telegram public username, with or without leading @. Required when kind='username'."
+        description = "Telegram peer selector. Identifies the user, group, or channel whose message history should be read."
     )]
-    pub username: Option<String>,
-
-    #[schemars(description = "Telegram peer id returned by get_dialogs. Required when kind='id'.")]
-    pub peer_id: Option<i64>,
+    pub peer: GetPeerRequest,
 
     #[schemars(description = "Maximum number of messages to return.")]
+    pub limit: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetSearchMessagesRequest {
+    #[schemars(
+        description = "Telegram peer selector. Identifies the user, group, or channel where messages should be searched."
+    )]
+    pub peer: GetPeerRequest,
+
+    #[schemars(
+        description = "Search query text used to find matching messages in the selected Telegram peer."
+    )]
+    pub query: String,
+
+    #[serde(default = "default_limit")]
+    #[schemars(description = "Maximum number of matching messages to return. Defaults to 50.")]
     pub limit: usize,
 }
 

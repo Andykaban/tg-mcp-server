@@ -186,10 +186,26 @@ impl TgClient {
         id: Option<i64>,
     ) -> Result<usize> {
         let my_peer = self.get_peer(kind, username, id).await?;
-        let client = self.client.lock();
-        let mut messages = client.await.iter_messages(my_peer.to_ref().await.unwrap());
+        let client = self.client.lock().await;
+        let mut messages = client.iter_messages(my_peer.to_ref().await.unwrap());
         let messages_count = messages.total().await.unwrap();
         Ok(messages_count)
+    }
+
+    pub async fn get_search_messages_count(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        query: String,
+    ) -> Result<usize> {
+        let my_peer = self.get_peer(kind, username, id).await?;
+        let client = self.client.lock().await;
+        let mut search_messages = client
+            .search_messages(my_peer.to_ref().await.unwrap())
+            .query(query.as_str());
+        let search_count = search_messages.total().await.unwrap();
+        Ok(search_count)
     }
 
     pub async fn get_messages(
@@ -204,9 +220,52 @@ impl TgClient {
         let client = self.client.lock().await;
         let mut messages = client.iter_messages(peer.to_ref().await.unwrap());
         let total = messages.total().await.unwrap();
+        let limit = limit.min(total);
         let mut cnt = 0;
-        println!("Total {} / count {}", total, cnt);
         while let Some(msg) = messages.next().await? {
+            let msg_id = msg.id();
+            let msg_text = msg.text();
+            match msg.sender() {
+                Some(sender_peer) => {
+                    let m = self
+                        .get_message_struct(msg_id, msg_text, sender_peer)
+                        .await
+                        .unwrap();
+                    result.push(m);
+                }
+                None => {
+                    let m = self
+                        .get_message_struct(msg_id, msg_text, &peer)
+                        .await
+                        .unwrap();
+                    result.push(m);
+                }
+            }
+            cnt += 1;
+            if cnt >= limit {
+                break;
+            }
+        }
+        result.reverse();
+        Ok(result)
+    }
+
+    pub async fn get_search_messages(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        query: String,
+        limit: usize,
+    ) -> Result<Vec<TgMessageOutputItem>> {
+        let mut result: Vec<TgMessageOutputItem> = Vec::new();
+        let peer = self.get_peer(kind, username, id).await?;
+        let client = self.client.lock().await;
+        let mut search_messages = client
+            .search_messages(peer.to_ref().await.unwrap())
+            .query(query.as_str());
+        let mut cnt = 0;
+        while let Some(msg) = search_messages.next().await? {
             let msg_id = msg.id();
             let msg_text = msg.text();
             match msg.sender() {
