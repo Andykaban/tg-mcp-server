@@ -22,6 +22,17 @@ pub struct TgMessageOutputItem {
     pub text: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct TgParticipantOutputItem {
+    pub id: i64,
+    pub full_name: String,
+    pub username: Option<String>,
+    pub is_bot: bool,
+    pub is_premium: bool,
+    pub phone_number: Option<String>,
+    pub role: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetPeerRequest {
@@ -37,13 +48,13 @@ pub struct GetPeerRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct GetMessagesRequest {
+pub struct PeerLimitRequest {
     #[schemars(
         description = "Telegram peer selector. Identifies the user, group, or channel whose message history should be read."
     )]
     pub peer: GetPeerRequest,
 
-    #[schemars(description = "Maximum number of messages to return.")]
+    #[schemars(description = "Maximum number of items to return.")]
     pub limit: usize,
 }
 

@@ -1,5 +1,5 @@
 use crate::libs::tg_client::TgClient;
-use crate::libs::tg_structs::{GetMessagesRequest, GetPeerRequest, GetSearchMessagesRequest};
+use crate::libs::tg_structs::{GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest};
 use rmcp::ServerHandler;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::transport::streamable_http_server::{
@@ -105,6 +105,25 @@ impl TelegramMcpServer {
     }
 
     #[tool(
+        description = "Counts participants in the specified Telegram peer. The peer should be a group or channel; private users do not have participants."
+    )]
+    async fn get_participants_count(
+        &self,
+        Parameters(req): Parameters<GetPeerRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let total_participants_count = self
+            .client
+            .get_participants_count(req.kind, req.username, req.id)
+            .await;
+        match total_participants_count {
+            Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"total_participants_count": cnt}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
         description = "Returns the number of Telegram text messages from the specified peer that match the provided search query."
     )]
     async fn search_text_messages_count(
@@ -128,7 +147,7 @@ impl TelegramMcpServer {
     )]
     async fn get_text_messages_for_peer(
         &self,
-        Parameters(req): Parameters<GetMessagesRequest>,
+        Parameters(req): Parameters<PeerLimitRequest>,
     ) -> Result<CallToolResult, McpError> {
         let text_messages = self
             .client
@@ -166,13 +185,34 @@ impl TelegramMcpServer {
             Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
         }
     }
+
+    #[tool(
+        description = "Fetches participants for the specified Telegram peer. The peer should be a group or channel; private user chats do not have participants."
+    )]
+    async fn get_participants(
+        &self,
+        Parameters(req): Parameters<PeerLimitRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let participants = self
+            .client
+            .get_participants(req.peer.kind, req.peer.username, req.peer.id, req.limit)
+            .await;
+        match participants {
+            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"participants": p}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
 }
 
-#[tool_handler(name = "tg-mcp-server", version = "0.1.0")]
+#[tool_handler]
 impl ServerHandler for TelegramMcpServer {
     fn get_info(&self) -> ServerInfo {
         let mut info = ServerInfo::default();
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
+        info.server_info.name = env!("CARGO_PKG_NAME").to_string();
+        info.server_info.version = env!("CARGO_PKG_VERSION").to_string();
         info.instructions = Some(
             "Telegram API (MTProto) MCP server. Provides access to Telegram client features such as dialogs, messages, and chats. Functionality is partially implemented and will be expanded over time.".into(),
         );

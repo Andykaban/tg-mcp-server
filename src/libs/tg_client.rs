@@ -1,7 +1,11 @@
-use crate::libs::tg_structs::{TgDialogOutputItem, TgMessageOutputItem, TgPeerOutput};
-use anyhow::{Ok, Result};
-use grammers_client::peer::Peer;
-use grammers_client::{Client, SenderPool, SignInError};
+use crate::libs::tg_structs::{
+    TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem, TgPeerOutput,
+};
+use anyhow::Result;
+use grammers_client::{
+    Client, SenderPool, SignInError,
+    peer::{Peer, Role},
+};
 use grammers_session::storages::SqliteSession;
 use std::io::{self, Write};
 use std::sync::Arc;
@@ -208,6 +212,19 @@ impl TgClient {
         Ok(search_count)
     }
 
+    pub async fn get_participants_count(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+    ) -> Result<usize> {
+        let my_peer = self.get_peer(kind, username, id).await?;
+        let client = self.client.lock().await;
+        let mut participants = client.iter_participants(my_peer.to_ref().await.unwrap());
+        let participants_count = participants.total().await.unwrap();
+        Ok(participants_count)
+    }
+
     pub async fn get_messages(
         &self,
         kind: String,
@@ -290,6 +307,48 @@ impl TgClient {
             }
         }
         result.reverse();
+        Ok(result)
+    }
+
+    pub async fn get_participants(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        limit: usize,
+    ) -> Result<Vec<TgParticipantOutputItem>> {
+        let mut result: Vec<TgParticipantOutputItem> = Vec::new();
+        let peer = self.get_peer(kind, username, id).await?;
+        let client = self.client.lock().await;
+        let mut participants = client.iter_participants(peer.to_ref().await.unwrap());
+        let total = participants.total().await?;
+        let limit = limit.min(total);
+        let mut cnt = 0;
+        while let Some(participant) = participants.next().await? {
+            let p_role = match participant.role {
+                Role::User(_) => "user",
+                Role::Creator(_) => "creator",
+                Role::Admin(_) => "admin",
+                Role::Banned(_) => "banned",
+                Role::Left(_) => "left",
+                _ => "unknown",
+            }
+            .to_string();
+            let p_item = TgParticipantOutputItem {
+                id: participant.user.id().bare_id(),
+                full_name: participant.user.full_name(),
+                username: participant.user.username().map(|x| x.to_string()),
+                is_bot: participant.user.is_bot(),
+                is_premium: participant.user.is_premium(),
+                phone_number: participant.user.phone().map(|x| x.to_string()),
+                role: p_role,
+            };
+            result.push(p_item);
+            cnt += 1;
+            if cnt >= limit {
+                break;
+            }
+        }
         Ok(result)
     }
 
