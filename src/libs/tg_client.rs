@@ -10,11 +10,9 @@ use grammers_session::storages::SqliteSession;
 use std::io::{self, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 
 pub struct TgClient {
     client: Mutex<Client>,
-    runner_tasks: JoinHandle<()>,
     _session: Arc<SqliteSession>,
 }
 
@@ -28,7 +26,7 @@ impl TgClient {
         let session = Arc::new(SqliteSession::open(session_path).await?);
         let SenderPool { runner, handle, .. } = SenderPool::new(Arc::clone(&session), api_id);
         let client = Client::new(handle);
-        let runner_tasks = tokio::spawn(runner.run());
+        _ = tokio::spawn(runner.run());
         if !client.is_authorized().await? {
             let token = client.request_login_code(phone_num, api_hash).await?;
             let code = prompt("Enter the code you received: ")?;
@@ -46,7 +44,6 @@ impl TgClient {
         }
         Ok(Self {
             client: Mutex::new(client),
-            runner_tasks: runner_tasks,
             _session: session,
         })
     }
@@ -117,6 +114,9 @@ impl TgClient {
                     id: u.id().bare_id(),
                     full_name: u.full_name(),
                     username: u.username().map(|x| x.to_string()),
+                    is_bot: u.is_bot(),
+                    is_premium: u.is_premium(),
+                    phone_number: u.phone().map(|x| x.to_string()),
                 });
             }
             Peer::Group(g) => {
@@ -245,14 +245,14 @@ impl TgClient {
             match msg.sender() {
                 Some(sender_peer) => {
                     let m = self
-                        .get_message_struct(msg_id, msg_text, sender_peer)
+                        .to_message_struct(msg_id, msg_text, sender_peer)
                         .await
                         .unwrap();
                     result.push(m);
                 }
                 None => {
                     let m = self
-                        .get_message_struct(msg_id, msg_text, &peer)
+                        .to_message_struct(msg_id, msg_text, &peer)
                         .await
                         .unwrap();
                     result.push(m);
@@ -288,14 +288,14 @@ impl TgClient {
             match msg.sender() {
                 Some(sender_peer) => {
                     let m = self
-                        .get_message_struct(msg_id, msg_text, sender_peer)
+                        .to_message_struct(msg_id, msg_text, sender_peer)
                         .await
                         .unwrap();
                     result.push(m);
                 }
                 None => {
                     let m = self
-                        .get_message_struct(msg_id, msg_text, &peer)
+                        .to_message_struct(msg_id, msg_text, &peer)
                         .await
                         .unwrap();
                     result.push(m);
@@ -352,7 +352,7 @@ impl TgClient {
         Ok(result)
     }
 
-    async fn get_message_struct(
+    async fn to_message_struct(
         &self,
         m_id: i32,
         msg: &str,

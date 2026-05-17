@@ -83,6 +83,9 @@ pub enum TgPeerOutput {
         id: i64,
         full_name: String,
         username: Option<String>,
+        is_bot: bool,
+        is_premium: bool,
+        phone_number: Option<String>,
     },
     Group {
         id: i64,

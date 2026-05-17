@@ -88,7 +88,7 @@ impl TelegramMcpServer {
     #[tool(
         description = "Counts messages in the Telegram history for a specified peer, which can be a user, group, or channel."
     )]
-    async fn get_messages_count_for_peer(
+    async fn get_text_messages_count(
         &self,
         Parameters(req): Parameters<GetPeerRequest>,
     ) -> Result<CallToolResult, McpError> {
@@ -145,7 +145,7 @@ impl TelegramMcpServer {
     #[tool(
         description = "Returns text messages from the specified Telegram peer. The peer can be resolved by username or id according to the request fields. On success, returns JSON in the form {\"text_messages\": [...]}, where each item contains message_id, sender_id, sender_username, sender_full_name, and text."
     )]
-    async fn get_text_messages_for_peer(
+    async fn get_text_messages(
         &self,
         Parameters(req): Parameters<PeerLimitRequest>,
     ) -> Result<CallToolResult, McpError> {
