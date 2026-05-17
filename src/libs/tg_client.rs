@@ -398,7 +398,7 @@ impl TgClient {
         }
     }
 
-    /*pub async fn cal(&self, peer_id: i64, cnt_from: usize, cnt_to: usize) -> Result<()> {
+    /*pub async fn dbg_func(&self, peer_id: i64, cnt_from: usize, cnt_to: usize) -> Result<()> {
         let peer = self.get_peer_by_id(peer_id).await?;
         let client = self.client.lock().await;
         let mut messages = client.iter_messages(peer.to_ref().await.unwrap());

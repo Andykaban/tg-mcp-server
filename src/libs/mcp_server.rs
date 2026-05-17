@@ -1,23 +1,17 @@
 use crate::libs::tg_client::TgClient;
 use crate::libs::tg_structs::{GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest};
-use rmcp::ServerHandler;
-use rmcp::handler::server::wrapper::Parameters;
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
 use rmcp::{
-    ErrorData as McpError,
-    handler::server::tool::ToolRouter,
+    ErrorData as McpError, ServerHandler, ServiceExt,
+    handler::server::{tool::ToolRouter, wrapper::Parameters},
     model::{CallToolResult, Content, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
+    transport::stdio,
 };
 use serde_json::json;
 use std::sync::Arc;
-use tracing_subscriber::{
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    {self},
-};
 
 #[derive(Clone)]
 pub struct TelegramMcpServer {
@@ -220,18 +214,7 @@ impl ServerHandler for TelegramMcpServer {
     }
 }
 
-pub async fn start_mcp_server_stream(
-    t_client: TgClient,
-    bind_address: String,
-) -> anyhow::Result<()> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "debug".to_string().into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
+pub async fn start_mcp_server_http(t_client: TgClient, bind_address: String) -> anyhow::Result<()> {
     let tg = Arc::new(t_client);
     let ct = tokio_util::sync::CancellationToken::new();
     let service = StreamableHttpService::new(
@@ -250,5 +233,13 @@ pub async fn start_mcp_server_stream(
             ct.cancel();
         })
         .await;
+    Ok(())
+}
+
+pub async fn start_mcp_server_stdio(t_client: TgClient) -> anyhow::Result<()> {
+    let tg = Arc::new(t_client);
+    let server = TelegramMcpServer::new(tg.clone());
+    let service = server.serve(stdio()).await?;
+    service.waiting().await?;
     Ok(())
 }
