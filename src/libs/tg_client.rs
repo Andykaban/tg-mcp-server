@@ -352,6 +352,21 @@ impl TgClient {
         Ok(result)
     }
 
+    pub async fn send_message(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        message: String,
+    ) -> Result<()> {
+        let peer = self.get_peer(kind, username, id).await?;
+        let client = self.client.lock().await;
+        client
+            .send_message(peer.to_ref().await.unwrap(), message.as_str())
+            .await?;
+        Ok(())
+    }
+
     async fn to_message_struct(
         &self,
         m_id: i32,

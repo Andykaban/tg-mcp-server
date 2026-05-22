@@ -1,5 +1,7 @@
 use crate::libs::tg_client::TgClient;
-use crate::libs::tg_structs::{GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest};
+use crate::libs::tg_structs::{
+    GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest, SendMessageRequest,
+};
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -137,7 +139,7 @@ impl TelegramMcpServer {
     }
 
     #[tool(
-        description = "Returns text messages from the specified Telegram peer. The peer can be resolved by username or id according to the request fields. On success, returns JSON in the form {\"text_messages\": [...]}, where each item contains message_id, sender_id, sender_username, sender_full_name, and text."
+        description = "Returns text messages from the specified Telegram peer, resolved by username or id. The response contains a `text_messages` array with message id, sender information, and message text."
     )]
     async fn get_text_messages(
         &self,
@@ -198,6 +200,25 @@ impl TelegramMcpServer {
             Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
         }
     }
+
+    #[tool(
+        description = "Sends a text message to the specified Telegram peer. The peer can be a user, group, or channel resolved by username or id."
+    )]
+    async fn send_message(
+        &self,
+        Parameters(req): Parameters<SendMessageRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let send_status = self
+            .client
+            .send_message(req.peer.kind, req.peer.username, req.peer.id, req.message)
+            .await;
+        match send_status {
+            Ok(_) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"send_status": true}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
 }
 
 #[tool_handler]
@@ -238,7 +259,7 @@ pub async fn start_mcp_server_http(t_client: TgClient, bind_address: String) -> 
 
 pub async fn start_mcp_server_stdio(t_client: TgClient) -> anyhow::Result<()> {
     let tg = Arc::new(t_client);
-    let server = TelegramMcpServer::new(tg.clone());
+    let server = TelegramMcpServer::new(Arc::clone(&tg));
     let service = server.serve(stdio()).await?;
     service.waiting().await?;
     Ok(())

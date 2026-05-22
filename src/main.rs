@@ -5,7 +5,6 @@ use crate::libs::tg_client::TgClient;
 use anyhow::Result;
 use clap::Parser;
 use serde::Deserialize;
-use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -34,7 +33,7 @@ struct TgConfig {
     phone_number: String,
 }
 
-fn read_tg_config_from_file<P: AsRef<Path>>(path: P) -> Result<TgConfig, Box<dyn Error>> {
+fn read_tg_config_from_file<P: AsRef<Path>>(path: P) -> Result<TgConfig> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let config = serde_json::from_reader(reader)?;

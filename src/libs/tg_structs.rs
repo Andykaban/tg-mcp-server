@@ -76,6 +76,18 @@ pub struct GetSearchMessagesRequest {
     pub limit: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct SendMessageRequest {
+    #[schemars(
+        description = "Telegram peer selector. Identifies the user, group, or channel where the message should be sent."
+    )]
+    pub peer: GetPeerRequest,
+
+    #[schemars(description = "Text message content to send to the selected Telegram peer.")]
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TgPeerOutput {
