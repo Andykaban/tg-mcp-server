@@ -48,6 +48,16 @@ pub struct GetPeerRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub struct SearchPeerRequest {
+    #[schemars(description = "Search query used to find Telegram users, groups, or channels.")]
+    pub query: String,
+
+    #[schemars(description = "Maximum number of matching Telegram peers to return.")]
+    pub limit: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct PeerLimitRequest {
     #[schemars(
         description = "Telegram peer selector. Identifies the user, group, or channel whose message history should be read."

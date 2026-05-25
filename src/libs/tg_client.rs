@@ -101,6 +101,17 @@ impl TgClient {
         Ok(dialog_out)
     }
 
+    pub async fn search_peer(&self, query: String, limit: usize) -> Result<Vec<TgPeerOutput>> {
+        let mut result: Vec<TgPeerOutput> = Vec::new();
+        let client = self.client.lock().await;
+        let found_items = client.search_peer(query.as_str(), limit).await?;
+        for item in found_items {
+            let peer = item.peer();
+            result.push(self.to_peer_output(peer).await);
+        }
+        Ok(result)
+    }
+
     pub async fn get_peer_info(
         &self,
         kind: String,
@@ -108,32 +119,8 @@ impl TgClient {
         id: Option<i64>,
     ) -> Result<TgPeerOutput> {
         let my_peer = self.get_peer(kind, username, id).await?;
-        match my_peer {
-            Peer::User(u) => {
-                return Ok(TgPeerOutput::User {
-                    id: u.id().bare_id(),
-                    full_name: u.full_name(),
-                    username: u.username().map(|x| x.to_string()),
-                    is_bot: u.is_bot(),
-                    is_premium: u.is_premium(),
-                    phone_number: u.phone().map(|x| x.to_string()),
-                });
-            }
-            Peer::Group(g) => {
-                return Ok(TgPeerOutput::Group {
-                    id: g.id().bare_id(),
-                    title: g.title().map(|x| x.to_string()),
-                    username: g.username().map(|x| x.to_string()),
-                });
-            }
-            Peer::Channel(c) => {
-                return Ok(TgPeerOutput::Channel {
-                    id: c.id().bare_id(),
-                    tittle: c.title().to_string(),
-                    username: c.username().map(|x| x.to_string()),
-                });
-            }
-        }
+        let p_output = self.to_peer_output(&my_peer).await;
+        Ok(p_output)
     }
 
     async fn get_peer(
@@ -365,6 +352,35 @@ impl TgClient {
             .send_message(peer.to_ref().await.unwrap(), message.as_str())
             .await?;
         Ok(())
+    }
+
+    async fn to_peer_output(&self, peer: &Peer) -> TgPeerOutput {
+        match peer {
+            Peer::User(u) => {
+                return TgPeerOutput::User {
+                    id: u.id().bare_id(),
+                    full_name: u.full_name(),
+                    username: u.username().map(|x| x.to_string()),
+                    is_bot: u.is_bot(),
+                    is_premium: u.is_premium(),
+                    phone_number: u.phone().map(|x| x.to_string()),
+                };
+            }
+            Peer::Group(g) => {
+                return TgPeerOutput::Group {
+                    id: g.id().bare_id(),
+                    title: g.title().map(|x| x.to_string()),
+                    username: g.username().map(|x| x.to_string()),
+                };
+            }
+            Peer::Channel(c) => {
+                return TgPeerOutput::Channel {
+                    id: c.id().bare_id(),
+                    tittle: c.title().to_string(),
+                    username: c.username().map(|x| x.to_string()),
+                };
+            }
+        }
     }
 
     async fn to_message_struct(

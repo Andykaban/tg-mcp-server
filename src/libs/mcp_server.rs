@@ -1,6 +1,7 @@
 use crate::libs::tg_client::TgClient;
 use crate::libs::tg_structs::{
-    GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest, SendMessageRequest,
+    GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest, SearchPeerRequest,
+    SendMessageRequest,
 };
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
@@ -76,6 +77,22 @@ impl TelegramMcpServer {
         match peer_data {
             Ok(p) => Ok(CallToolResult::success(vec![Content::text(
                 json!({"peer": p}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Searches for Telegram peers matching the provided query and returns users, groups, and channels that satisfy the search expression."
+    )]
+    async fn search_peer(
+        &self,
+        Parameters(req): Parameters<SearchPeerRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let found_peers = self.client.search_peer(req.query, req.limit).await;
+        match found_peers {
+            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"found_peers": p}).to_string(),
             )])),
             Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
         }
