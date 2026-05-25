@@ -4,6 +4,7 @@ use crate::libs::tg_structs::{
 use anyhow::Result;
 use grammers_client::{
     Client, SenderPool, SignInError,
+    message::Message,
     peer::{Peer, Role},
 };
 use grammers_session::storages::SqliteSession;
@@ -227,21 +228,13 @@ impl TgClient {
         let limit = limit.min(total);
         let mut cnt = 0;
         while let Some(msg) = messages.next().await? {
-            let msg_id = msg.id();
-            let msg_text = msg.text();
             match msg.sender() {
                 Some(sender_peer) => {
-                    let m = self
-                        .to_message_struct(msg_id, msg_text, sender_peer)
-                        .await
-                        .unwrap();
+                    let m = self.to_message_struct(&msg, sender_peer).await.unwrap();
                     result.push(m);
                 }
                 None => {
-                    let m = self
-                        .to_message_struct(msg_id, msg_text, &peer)
-                        .await
-                        .unwrap();
+                    let m = self.to_message_struct(&msg, &peer).await.unwrap();
                     result.push(m);
                 }
             }
@@ -270,21 +263,13 @@ impl TgClient {
             .query(query.as_str());
         let mut cnt = 0;
         while let Some(msg) = search_messages.next().await? {
-            let msg_id = msg.id();
-            let msg_text = msg.text();
             match msg.sender() {
                 Some(sender_peer) => {
-                    let m = self
-                        .to_message_struct(msg_id, msg_text, sender_peer)
-                        .await
-                        .unwrap();
+                    let m = self.to_message_struct(&msg, sender_peer).await.unwrap();
                     result.push(m);
                 }
                 None => {
-                    let m = self
-                        .to_message_struct(msg_id, msg_text, &peer)
-                        .await
-                        .unwrap();
+                    let m = self.to_message_struct(&msg, &peer).await.unwrap();
                     result.push(m);
                 }
             }
@@ -385,10 +370,11 @@ impl TgClient {
 
     async fn to_message_struct(
         &self,
-        m_id: i32,
-        msg: &str,
+        message: &Message,
         peer: &Peer,
     ) -> Result<TgMessageOutputItem> {
+        let m_id = message.id();
+        let msg = message.text().to_string();
         match peer {
             Peer::User(u) => {
                 let username = u.username().map(|x| x.to_string());
@@ -398,7 +384,7 @@ impl TgClient {
                     sender_id: u.id().bare_id(),
                     sender_username: username,
                     sender_full_name: Some(full_name),
-                    text: msg.to_string(),
+                    text: msg,
                 };
                 return Ok(m_item);
             }
@@ -410,7 +396,7 @@ impl TgClient {
                     sender_id: g.id().bare_id(),
                     sender_username: username,
                     sender_full_name: full_name,
-                    text: msg.to_string(),
+                    text: msg,
                 };
                 return Ok(m_item);
             }
@@ -422,7 +408,7 @@ impl TgClient {
                     sender_id: c.id().bare_id(),
                     sender_username: username,
                     sender_full_name: Some(full_name),
-                    text: msg.to_string(),
+                    text: msg,
                 };
                 return Ok(m_item);
             }
