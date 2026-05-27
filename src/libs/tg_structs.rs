@@ -34,6 +34,16 @@ pub struct TgParticipantOutputItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TgCommentOutputItem {
+    pub message_id: i32,
+    pub sender_id: Option<i64>,
+    pub sender_username: Option<String>,
+    pub sender_full_name: Option<String>,
+    pub text: String,
+    pub reply_to_message_id: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetPeerRequest {
     #[schemars(description = "How to resolve the Telegram peer: username or id.")]
@@ -66,6 +76,21 @@ pub struct PeerLimitRequest {
 
     #[schemars(description = "Maximum number of items to return.")]
     pub limit: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetPostCommentsRequest {
+    #[schemars(
+        description = "Telegram peer selector. Identifies the channel containing the target post."
+    )]
+    pub peer: GetPeerRequest,
+
+    #[schemars(description = "Identifier of the channel post whose comments should be retrieved.")]
+    pub message_id: i32,
+
+    #[schemars(description = "Maximum number of comments to return for the specified post.")]
+    pub limit: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

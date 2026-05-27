@@ -2179,6 +2179,7 @@ dependencies = [
  "clap",
  "grammers-client",
  "grammers-session",
+ "grammers-tl-types",
  "rmcp",
  "schemars",
  "serde",

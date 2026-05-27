@@ -1,7 +1,7 @@
 use crate::libs::tg_client::TgClient;
 use crate::libs::tg_structs::{
-    GetPeerRequest, GetSearchMessagesRequest, PeerLimitRequest, SearchPeerRequest,
-    SendMessageRequest,
+    GetPeerRequest, GetPostCommentsRequest, GetSearchMessagesRequest, PeerLimitRequest,
+    SearchPeerRequest, SendMessageRequest,
 };
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
@@ -232,6 +232,31 @@ impl TelegramMcpServer {
         match send_status {
             Ok(_) => Ok(CallToolResult::success(vec![Content::text(
                 json!({"send_status": true}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Fetches comments for a Telegram channel post identified by the provided message id. Returns comment messages with sender information and text content."
+    )]
+    async fn get_posr_comments(
+        &self,
+        Parameters(req): Parameters<GetPostCommentsRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let post_comments = self
+            .client
+            .get_post_comments(
+                req.peer.kind,
+                req.peer.username,
+                req.peer.id,
+                req.message_id,
+                req.limit,
+            )
+            .await;
+        match post_comments {
+            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"comments": p}).to_string(),
             )])),
             Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
         }

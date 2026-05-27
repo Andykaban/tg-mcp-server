@@ -1,13 +1,16 @@
 use crate::libs::tg_structs::{
-    TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem, TgPeerOutput,
+    TgCommentOutputItem, TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem,
+    TgPeerOutput,
 };
 use anyhow::Result;
+use grammers_client::tl;
 use grammers_client::{
     Client, SenderPool, SignInError,
     message::Message,
     peer::{Peer, Role},
 };
 use grammers_session::storages::SqliteSession;
+use grammers_tl_types as tl_types;
 use std::io::{self, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -337,6 +340,79 @@ impl TgClient {
             .send_message(peer.to_ref().await.unwrap(), message.as_str())
             .await?;
         Ok(())
+    }
+
+    pub async fn get_post_comments(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        message_id: i32,
+        limit: i32,
+    ) -> Result<Vec<TgCommentOutputItem>> {
+        let mut result: Vec<TgCommentOutputItem> = Vec::new();
+        let peer = self.get_peer(kind, username, id).await?;
+        let peer_ref = peer.to_ref().await.unwrap();
+        let input_peer = tl::enums::InputPeer::from(peer_ref);
+        let client = self.client.lock().await;
+        let replies_request = tl::functions::messages::GetReplies {
+            peer: input_peer,
+            msg_id: message_id,
+            offset_id: 0,
+            offset_date: 0,
+            add_offset: 0,
+            limit,
+            max_id: 0,
+            min_id: 0,
+            hash: 0,
+        };
+        let replies: tl::enums::messages::Messages = client.invoke(&replies_request).await?;
+        let (messages, users) = match replies {
+            tl::enums::messages::Messages::Messages(m) => (m.messages, m.users),
+            tl::enums::messages::Messages::ChannelMessages(m) => (m.messages, m.users),
+            tl::enums::messages::Messages::Slice(m) => (m.messages, m.users),
+            tl::enums::messages::Messages::NotModified(_) => (Vec::new(), Vec::new()),
+        };
+        for message in messages {
+            let tl::enums::Message::Message(msg) = message else {
+                continue;
+            };
+            let sender_id = msg.from_id.as_ref().and_then(|p| match p {
+                tl::enums::Peer::User(u) => Some(u.user_id),
+                tl::enums::Peer::Channel(c) => Some(c.channel_id),
+                tl::enums::Peer::Chat(c) => Some(c.chat_id),
+                _ => None,
+            });
+            let sender = sender_id.and_then(|uid| {
+                users.iter().find_map(|u| match u {
+                    tl::enums::User::User(user) if user.id == uid => Some(user),
+                    _ => None,
+                })
+            });
+
+            let tg_comment = TgCommentOutputItem {
+                message_id: msg.id,
+                sender_id,
+                sender_username: sender.and_then(|u| u.username.clone()),
+                sender_full_name: sender.map(|u| {
+                    format!(
+                        "{} {}",
+                        u.first_name.clone().unwrap_or_default(),
+                        u.last_name.clone().unwrap_or_default()
+                    )
+                    .trim()
+                    .to_string()
+                }),
+                text: msg.message.clone(),
+                reply_to_message_id: msg.reply_to.as_ref().and_then(|r| match r {
+                    tl_types::enums::MessageReplyHeader::Header(h) => h.reply_to_msg_id,
+                    _ => None,
+                }),
+            };
+            result.push(tg_comment);
+        }
+        result.reverse();
+        Ok(result)
     }
 
     async fn to_peer_output(&self, peer: &Peer) -> TgPeerOutput {
