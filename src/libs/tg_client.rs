@@ -352,6 +352,23 @@ impl TgClient {
     ) -> Result<Vec<TgCommentOutputItem>> {
         let mut result: Vec<TgCommentOutputItem> = Vec::new();
         let peer = self.get_peer(kind, username, id).await?;
+        let fallback_sender: (Option<i64>, Option<String>, Option<String>) = match &peer {
+            Peer::User(u) => (
+                Some(u.id().bare_id()),
+                u.username().map(|x| x.to_string()),
+                Some(u.full_name()),
+            ),
+            Peer::Group(g) => (
+                Some(g.id().bare_id()),
+                g.username().map(|x| x.to_string()),
+                g.title().map(|x| x.to_string()),
+            ),
+            Peer::Channel(c) => (
+                Some(c.id().bare_id()),
+                c.username().map(|x| x.to_string()),
+                Some(c.title().to_string()),
+            ),
+        };
         let peer_ref = peer.to_ref().await.unwrap();
         let input_peer = tl::enums::InputPeer::from(peer_ref);
         let client = self.client.lock().await;
@@ -367,42 +384,64 @@ impl TgClient {
             hash: 0,
         };
         let replies: tl::enums::messages::Messages = client.invoke(&replies_request).await?;
-        let (messages, users) = match replies {
-            tl::enums::messages::Messages::Messages(m) => (m.messages, m.users),
-            tl::enums::messages::Messages::ChannelMessages(m) => (m.messages, m.users),
-            tl::enums::messages::Messages::Slice(m) => (m.messages, m.users),
-            tl::enums::messages::Messages::NotModified(_) => (Vec::new(), Vec::new()),
+        let (messages, users, chats) = match replies {
+            tl::enums::messages::Messages::Messages(m) => (m.messages, m.users, m.chats),
+            tl::enums::messages::Messages::ChannelMessages(m) => (m.messages, m.users, m.chats),
+            tl::enums::messages::Messages::Slice(m) => (m.messages, m.users, m.chats),
+            tl::enums::messages::Messages::NotModified(_) => (Vec::new(), Vec::new(), Vec::new()),
         };
         for message in messages {
             let tl::enums::Message::Message(msg) = message else {
                 continue;
             };
-            let sender_id = msg.from_id.as_ref().and_then(|p| match p {
-                tl::enums::Peer::User(u) => Some(u.user_id),
-                tl::enums::Peer::Channel(c) => Some(c.channel_id),
-                tl::enums::Peer::Chat(c) => Some(c.chat_id),
-                _ => None,
-            });
-            let sender = sender_id.and_then(|uid| {
-                users.iter().find_map(|u| match u {
-                    tl::enums::User::User(user) if user.id == uid => Some(user),
-                    _ => None,
-                })
-            });
+            let (sender_id, sender_username, sender_full_name) = match msg.from_id.as_ref() {
+                Some(tl::enums::Peer::User(p)) => {
+                    let uid = p.user_id;
+                    let user = users.iter().find_map(|u| match u {
+                        tl::enums::User::User(user) if user.id == uid => Some(user),
+                        _ => None,
+                    });
+                    let username = user.and_then(|u| u.username.clone());
+                    let full_name = user.map(|u| {
+                        format!(
+                            "{} {}",
+                            u.first_name.clone().unwrap_or_default(),
+                            u.last_name.clone().unwrap_or_default()
+                        )
+                    });
+                    (Some(uid), username, full_name)
+                }
+                Some(tl::enums::Peer::Channel(p)) => {
+                    let ch_id = p.channel_id;
+                    let chan = chats.iter().find_map(|c| match c {
+                        tl::enums::Chat::Channel(ch) if ch.id == ch_id => Some(ch),
+                        _ => None,
+                    });
+                    let ch_name = chan.and_then(|c| c.username.clone());
+                    let ch_tittle = chan.map(|c| c.title.clone());
+                    (Some(ch_id), ch_name, ch_tittle)
+                }
+                Some(tl::enums::Peer::Chat(p)) => {
+                    let chat_id = p.chat_id;
+                    let group = chats.iter().find_map(|g| match g {
+                        tl::enums::Chat::Chat(chat) if chat.id == chat_id => Some(chat),
+                        _ => None,
+                    });
+                    let group_name = group.map(|x| x.title.clone());
+                    (Some(chat_id), None, group_name)
+                }
+                None => (
+                    fallback_sender.0,
+                    fallback_sender.1.clone(),
+                    fallback_sender.2.clone(),
+                ),
+            };
 
             let tg_comment = TgCommentOutputItem {
                 message_id: msg.id,
                 sender_id,
-                sender_username: sender.and_then(|u| u.username.clone()),
-                sender_full_name: sender.map(|u| {
-                    format!(
-                        "{} {}",
-                        u.first_name.clone().unwrap_or_default(),
-                        u.last_name.clone().unwrap_or_default()
-                    )
-                    .trim()
-                    .to_string()
-                }),
+                sender_username,
+                sender_full_name,
                 text: msg.message.clone(),
                 reply_to_message_id: msg.reply_to.as_ref().and_then(|r| match r {
                     tl_types::enums::MessageReplyHeader::Header(h) => h.reply_to_msg_id,
@@ -451,6 +490,7 @@ impl TgClient {
     ) -> Result<TgMessageOutputItem> {
         let m_id = message.id();
         let msg = message.text().to_string();
+        let reply = message.reply_to_message_id();
         match peer {
             Peer::User(u) => {
                 let username = u.username().map(|x| x.to_string());
@@ -461,6 +501,7 @@ impl TgClient {
                     sender_username: username,
                     sender_full_name: Some(full_name),
                     text: msg,
+                    reply_to_message_id: reply,
                 };
                 return Ok(m_item);
             }
@@ -473,6 +514,7 @@ impl TgClient {
                     sender_username: username,
                     sender_full_name: full_name,
                     text: msg,
+                    reply_to_message_id: reply,
                 };
                 return Ok(m_item);
             }
@@ -485,6 +527,7 @@ impl TgClient {
                     sender_username: username,
                     sender_full_name: Some(full_name),
                     text: msg,
+                    reply_to_message_id: reply,
                 };
                 return Ok(m_item);
             }

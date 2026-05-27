@@ -19,6 +19,7 @@ pub struct TgMessageOutputItem {
     pub sender_id: i64,
     pub sender_username: Option<String>,
     pub sender_full_name: Option<String>,
+    pub reply_to_message_id: Option<i32>,
     pub text: String,
 }
 
