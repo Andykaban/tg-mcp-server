@@ -181,8 +181,12 @@ impl TgClient {
         id: Option<i64>,
     ) -> Result<usize> {
         let my_peer = self.get_peer(kind, username, id).await?;
+        let my_peer_ref = my_peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut messages = client.iter_messages(my_peer.to_ref().await.unwrap());
+        let mut messages = client.iter_messages(my_peer_ref);
         let messages_count = messages.total().await.unwrap();
         Ok(messages_count)
     }
@@ -195,10 +199,12 @@ impl TgClient {
         query: String,
     ) -> Result<usize> {
         let my_peer = self.get_peer(kind, username, id).await?;
+        let my_peer_ref = my_peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut search_messages = client
-            .search_messages(my_peer.to_ref().await.unwrap())
-            .query(query.as_str());
+        let mut search_messages = client.search_messages(my_peer_ref).query(query.as_str());
         let search_count = search_messages.total().await.unwrap();
         Ok(search_count)
     }
@@ -210,8 +216,12 @@ impl TgClient {
         id: Option<i64>,
     ) -> Result<usize> {
         let my_peer = self.get_peer(kind, username, id).await?;
+        let my_peer_ref = my_peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut participants = client.iter_participants(my_peer.to_ref().await.unwrap());
+        let mut participants = client.iter_participants(my_peer_ref);
         let participants_count = participants.total().await.unwrap();
         Ok(participants_count)
     }
@@ -225,8 +235,12 @@ impl TgClient {
     ) -> Result<Vec<TgMessageOutputItem>> {
         let mut result: Vec<TgMessageOutputItem> = Vec::new();
         let peer = self.get_peer(kind, username, id).await?;
+        let peer_ref = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut messages = client.iter_messages(peer.to_ref().await.unwrap());
+        let mut messages = client.iter_messages(peer_ref);
         let total = messages.total().await.unwrap();
         let limit = limit.min(total);
         let mut cnt = 0;
@@ -260,10 +274,12 @@ impl TgClient {
     ) -> Result<Vec<TgMessageOutputItem>> {
         let mut result: Vec<TgMessageOutputItem> = Vec::new();
         let peer = self.get_peer(kind, username, id).await?;
+        let my_peer = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut search_messages = client
-            .search_messages(peer.to_ref().await.unwrap())
-            .query(query.as_str());
+        let mut search_messages = client.search_messages(my_peer).query(query.as_str());
         let mut cnt = 0;
         while let Some(msg) = search_messages.next().await? {
             match msg.sender() {
@@ -294,8 +310,12 @@ impl TgClient {
     ) -> Result<Vec<TgParticipantOutputItem>> {
         let mut result: Vec<TgParticipantOutputItem> = Vec::new();
         let peer = self.get_peer(kind, username, id).await?;
+        let my_peer = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
-        let mut participants = client.iter_participants(peer.to_ref().await.unwrap());
+        let mut participants = client.iter_participants(my_peer);
         let total = participants.total().await?;
         let limit = limit.min(total);
         let mut cnt = 0;
@@ -385,7 +405,10 @@ impl TgClient {
                 Some(c.title().to_string()),
             ),
         };
-        let peer_ref = peer.to_ref().await.unwrap();
+        let peer_ref = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
         let input_peer = tl::enums::InputPeer::from(peer_ref);
         let client = self.client.lock().await;
         let replies_request = tl::functions::messages::GetReplies {
