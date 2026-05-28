@@ -2,13 +2,13 @@ use crate::libs::tg_structs::{
     TgCommentOutputItem, TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem,
     TgPeerOutput,
 };
-use anyhow::Result;
-use grammers_client::tl;
+use anyhow::{Context, Result, anyhow};
 use grammers_client::{
     Client, SenderPool, SignInError,
     message::Message,
     peer::{Peer, Role},
 };
+use grammers_client::{message, tl};
 use grammers_session::storages::SqliteSession;
 use grammers_tl_types as tl_types;
 use std::io::{self, Write};
@@ -332,13 +332,29 @@ impl TgClient {
         kind: String,
         username: Option<String>,
         id: Option<i64>,
-        message: String,
+        msg: String,
+        msg_reply_to: Option<i32>,
     ) -> Result<()> {
         let peer = self.get_peer(kind, username, id).await?;
         let client = self.client.lock().await;
-        client
-            .send_message(peer.to_ref().await.unwrap(), message.as_str())
-            .await?;
+        let peer_ref = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
+
+        let to_send = match msg_reply_to {
+            Some(reply_to) if reply_to > 0 => message::InputMessage::new()
+                .text(msg.as_str())
+                .reply_to(Some(reply_to)),
+            Some(reply_to) => {
+                return Err(anyhow!(
+                    "msg_reply_to must be a positive message id, got {}",
+                    reply_to
+                ));
+            }
+            None => message::InputMessage::new().text(msg.as_str()),
+        };
+        client.send_message(peer_ref, to_send).await?;
         Ok(())
     }
 

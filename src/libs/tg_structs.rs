@@ -122,6 +122,11 @@ pub struct SendMessageRequest {
 
     #[schemars(description = "Text message content to send to the selected Telegram peer.")]
     pub message: String,
+
+    #[schemars(
+        description = "Optional message id to reply to. If set, the message will be sent as a reply/comment to the specified message."
+    )]
+    pub reply_to_message_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]

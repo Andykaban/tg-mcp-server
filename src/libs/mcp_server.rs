@@ -219,7 +219,7 @@ impl TelegramMcpServer {
     }
 
     #[tool(
-        description = "Sends a text message to the specified Telegram peer. The peer can be a user, group, or channel resolved by username or id."
+        description = "Sends a text message to the specified Telegram peer. The peer can be a user, group, or channel resolved by username or id. If reply_to_message_id is provided, the message will be sent as a reply or channel post comment."
     )]
     async fn send_message(
         &self,
@@ -227,7 +227,13 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let send_status = self
             .client
-            .send_message(req.peer.kind, req.peer.username, req.peer.id, req.message)
+            .send_message(
+                req.peer.kind,
+                req.peer.username,
+                req.peer.id,
+                req.message,
+                req.reply_to_message_id,
+            )
             .await;
         match send_status {
             Ok(_) => Ok(CallToolResult::success(vec![Content::text(
