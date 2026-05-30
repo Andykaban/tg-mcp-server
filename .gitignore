@@ -1,4 +1,4 @@
 /target
 config.json
-tg_mcp_server.session
+*.session
 log
