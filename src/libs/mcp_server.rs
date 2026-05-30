@@ -1,7 +1,7 @@
 use crate::libs::tg_client::TgClient;
 use crate::libs::tg_structs::{
     GetPeerRequest, GetPostCommentsRequest, GetSearchMessagesRequest, PeerLimitRequest,
-    SearchPeerRequest, SendMessageRequest,
+    SearchPeerRequest, SendMessageRequest, SendPostComment,
 };
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
@@ -219,7 +219,7 @@ impl TelegramMcpServer {
     }
 
     #[tool(
-        description = "Sends a text message to the specified Telegram peer. The peer can be a user, group, or channel resolved by username or id. If reply_to_message_id is provided, the message will be sent as a reply or channel post comment."
+        description = "Sends a text message to the specified Telegram peer. The peer can be a user, group, or channel resolved by username or id. If reply_to_message_id is provided, the message will be sent as a reply."
     )]
     async fn send_message(
         &self,
@@ -246,7 +246,7 @@ impl TelegramMcpServer {
     #[tool(
         description = "Fetches comments for a Telegram channel post identified by the provided message id. Returns comment messages with sender information and text content."
     )]
-    async fn get_posr_comments(
+    async fn get_post_comments(
         &self,
         Parameters(req): Parameters<GetPostCommentsRequest>,
     ) -> Result<CallToolResult, McpError> {
@@ -263,6 +263,31 @@ impl TelegramMcpServer {
         match post_comments {
             Ok(p) => Ok(CallToolResult::success(vec![Content::text(
                 json!({"comments": p}).to_string(),
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Posts a comment to the specified Telegram channel post. The comment is sent to the discussion thread associated with the post."
+    )]
+    async fn send_post_comment(
+        &self,
+        Parameters(req): Parameters<SendPostComment>,
+    ) -> Result<CallToolResult, McpError> {
+        let send_status = self
+            .client
+            .add_post_comment(
+                req.peer.kind,
+                req.peer.username,
+                req.peer.id,
+                req.message_id,
+                req.post_comment,
+            )
+            .await;
+        match send_status {
+            Ok(_) => Ok(CallToolResult::success(vec![Content::text(
+                json!({"send_status": true}).to_string(),
             )])),
             Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
         }

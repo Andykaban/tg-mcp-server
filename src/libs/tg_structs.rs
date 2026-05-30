@@ -124,9 +124,26 @@ pub struct SendMessageRequest {
     pub message: String,
 
     #[schemars(
-        description = "Optional message id to reply to. If set, the message will be sent as a reply/comment to the specified message."
+        description = "Optional message id to reply to. If set, the message will be sent as a reply to the specified message."
     )]
     pub reply_to_message_id: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct SendPostComment {
+    #[schemars(
+        description = "Telegram channel selector. Identifies the channel containing the target post."
+    )]
+    pub peer: GetPeerRequest,
+
+    #[schemars(description = "Identifier of the channel post to comment on.")]
+    pub message_id: i32,
+
+    #[schemars(
+        description = "Text content of the comment to be posted in the discussion thread associated with the specified channel post."
+    )]
+    pub post_comment: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]

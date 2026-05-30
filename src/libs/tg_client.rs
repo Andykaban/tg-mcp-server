@@ -2,7 +2,7 @@ use crate::libs::tg_structs::{
     TgCommentOutputItem, TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem,
     TgPeerOutput,
 };
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Ok, Result};
 use grammers_client::{
     Client, SenderPool, SignInError,
     message::Message,
@@ -11,6 +11,7 @@ use grammers_client::{
 use grammers_client::{message, tl};
 use grammers_session::storages::SqliteSession;
 use grammers_tl_types as tl_types;
+use rand;
 use std::io::{self, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -169,8 +170,7 @@ impl TgClient {
         let peer = client
             .resolve_username(peer_name.as_str().trim_start_matches("&"))
             .await?
-            .ok_or(format!("no peer with {} username", peer_name))
-            .unwrap();
+            .ok_or_else(|| anyhow::anyhow!(format!("no peer with {} username", peer_name)))?;
         Ok(peer.clone())
     }
 
@@ -187,7 +187,7 @@ impl TgClient {
             .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
         let mut messages = client.iter_messages(my_peer_ref);
-        let messages_count = messages.total().await.unwrap();
+        let messages_count = messages.total().await?;
         Ok(messages_count)
     }
 
@@ -205,7 +205,7 @@ impl TgClient {
             .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
         let mut search_messages = client.search_messages(my_peer_ref).query(query.as_str());
-        let search_count = search_messages.total().await.unwrap();
+        let search_count = search_messages.total().await?;
         Ok(search_count)
     }
 
@@ -222,7 +222,7 @@ impl TgClient {
             .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
         let mut participants = client.iter_participants(my_peer_ref);
-        let participants_count = participants.total().await.unwrap();
+        let participants_count = participants.total().await?;
         Ok(participants_count)
     }
 
@@ -241,17 +241,17 @@ impl TgClient {
             .context("failed to resolve input peer reference")?;
         let client = self.client.lock().await;
         let mut messages = client.iter_messages(peer_ref);
-        let total = messages.total().await.unwrap();
+        let total = messages.total().await?;
         let limit = limit.min(total);
         let mut cnt = 0;
         while let Some(msg) = messages.next().await? {
             match msg.sender() {
                 Some(sender_peer) => {
-                    let m = self.to_message_struct(&msg, sender_peer).await.unwrap();
+                    let m = self.to_message_struct(&msg, sender_peer).await?;
                     result.push(m);
                 }
                 None => {
-                    let m = self.to_message_struct(&msg, &peer).await.unwrap();
+                    let m = self.to_message_struct(&msg, &peer).await?;
                     result.push(m);
                 }
             }
@@ -284,11 +284,11 @@ impl TgClient {
         while let Some(msg) = search_messages.next().await? {
             match msg.sender() {
                 Some(sender_peer) => {
-                    let m = self.to_message_struct(&msg, sender_peer).await.unwrap();
+                    let m = self.to_message_struct(&msg, sender_peer).await?;
                     result.push(m);
                 }
                 None => {
-                    let m = self.to_message_struct(&msg, &peer).await.unwrap();
+                    let m = self.to_message_struct(&msg, &peer).await?;
                     result.push(m);
                 }
             }
@@ -367,7 +367,7 @@ impl TgClient {
                 .text(msg.as_str())
                 .reply_to(Some(reply_to)),
             Some(reply_to) => {
-                return Err(anyhow!(
+                return Err(anyhow::anyhow!(
                     "msg_reply_to must be a positive message id, got {}",
                     reply_to
                 ));
@@ -375,6 +375,99 @@ impl TgClient {
             None => message::InputMessage::new().text(msg.as_str()),
         };
         client.send_message(peer_ref, to_send).await?;
+        Ok(())
+    }
+
+    pub async fn add_post_comment(
+        &self,
+        kind: String,
+        username: Option<String>,
+        id: Option<i64>,
+        message_id: i32,
+        post_comment: String,
+    ) -> Result<()> {
+        let peer = self.get_peer(kind, username, id).await?;
+        let peer_ref = peer
+            .to_ref()
+            .await
+            .context("failed to resolve input peer reference")?;
+        let input_peer = tl::enums::InputPeer::from(peer_ref);
+        let discussion_req = tl::functions::messages::GetDiscussionMessage {
+            peer: input_peer,
+            msg_id: message_id,
+        };
+        let client = self.client.lock().await;
+        let d_messages = client.invoke(&discussion_req).await?;
+        let discussion = match d_messages {
+            tl::enums::messages::DiscussionMessage::Message(m) => m,
+        };
+        let disc_msg_id = discussion.messages.first().and_then(|msg| match msg {
+            tl::enums::Message::Message(m) => Some(m.id),
+            _ => None,
+        });
+        let discussion_msg_id = disc_msg_id.ok_or_else(|| {
+            anyhow::anyhow!(format!(
+                "failed to resolve discussion message id for {} message id",
+                message_id
+            ))
+        })?;
+        let disc_msg_input_peer = discussion.chats.first().and_then(|ch| match ch {
+            tl::enums::Chat::Channel(c) => {
+                Some(tl::enums::InputPeer::Channel(tl::types::InputPeerChannel {
+                    channel_id: c.id,
+                    access_hash: c.access_hash.unwrap_or(0),
+                }))
+            }
+            tl::enums::Chat::Chat(c) => {
+                Some(tl::enums::InputPeer::Chat(tl::types::InputPeerChat {
+                    chat_id: c.id,
+                }))
+            }
+            _ => None,
+        });
+        let discussion_input_peer = disc_msg_input_peer.ok_or_else(|| {
+            anyhow::anyhow!(format!(
+                "failed to resolve discussion message peer for {} message id",
+                message_id
+            ))
+        })?;
+
+        let comment_req = tl::functions::messages::SendMessage {
+            no_webpage: false,
+            silent: false,
+            background: false,
+            clear_draft: false,
+            noforwards: false,
+            update_stickersets_order: false,
+            invert_media: false,
+            peer: discussion_input_peer,
+            reply_to: Some(tl::enums::InputReplyTo::Message(
+                tl::types::InputReplyToMessage {
+                    reply_to_msg_id: discussion_msg_id,
+                    top_msg_id: None,
+                    reply_to_peer_id: None,
+                    quote_text: None,
+                    quote_entities: None,
+                    quote_offset: None,
+                    monoforum_peer_id: None,
+                    todo_item_id: None,
+                },
+            )),
+            message: post_comment,
+            random_id: rand::random(),
+            reply_markup: None,
+            entities: None,
+            schedule_date: None,
+            send_as: None,
+            quick_reply_shortcut: None,
+            effect: None,
+            allow_paid_floodskip: false,
+            allow_paid_stars: None,
+            schedule_repeat_period: None,
+            suggested_post: None,
+        };
+
+        client.invoke(&comment_req).await?;
         Ok(())
     }
 

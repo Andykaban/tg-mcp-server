@@ -2180,6 +2180,7 @@ dependencies = [
  "grammers-client",
  "grammers-session",
  "grammers-tl-types",
+ "rand 0.10.1",
  "rmcp",
  "schemars",
  "serde",
