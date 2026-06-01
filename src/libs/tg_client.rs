@@ -1,6 +1,5 @@
 use crate::libs::tg_structs::{
-    TgCommentOutputItem, TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem,
-    TgPeerOutput,
+    TgDialogOutputItem, TgMessageOutputItem, TgParticipantOutputItem, TgPeerOutput,
 };
 use anyhow::{Context, Ok, Result};
 use grammers_client::{
@@ -478,8 +477,8 @@ impl TgClient {
         id: Option<i64>,
         message_id: i32,
         limit: i32,
-    ) -> Result<Vec<TgCommentOutputItem>> {
-        let mut result: Vec<TgCommentOutputItem> = Vec::new();
+    ) -> Result<Vec<TgMessageOutputItem>> {
+        let mut result: Vec<TgMessageOutputItem> = Vec::new();
         let peer = self.get_peer(kind, username, id).await?;
         let fallback_sender: (Option<i64>, Option<String>, Option<String>) = match &peer {
             Peer::User(u) => (
@@ -569,7 +568,7 @@ impl TgClient {
                 ),
             };
 
-            let tg_comment = TgCommentOutputItem {
+            let tg_comment = TgMessageOutputItem {
                 message_id: msg.id,
                 sender_id,
                 sender_username,
@@ -629,7 +628,7 @@ impl TgClient {
                 let full_name = u.full_name();
                 let m_item = TgMessageOutputItem {
                     message_id: m_id,
-                    sender_id: u.id().bare_id(),
+                    sender_id: Some(u.id().bare_id()),
                     sender_username: username,
                     sender_full_name: Some(full_name),
                     text: msg,
@@ -642,7 +641,7 @@ impl TgClient {
                 let full_name = g.title().map(|x| x.to_string());
                 let m_item = TgMessageOutputItem {
                     message_id: m_id,
-                    sender_id: g.id().bare_id(),
+                    sender_id: Some(g.id().bare_id()),
                     sender_username: username,
                     sender_full_name: full_name,
                     text: msg,
@@ -655,7 +654,7 @@ impl TgClient {
                 let full_name = c.title().to_string();
                 let m_item = TgMessageOutputItem {
                     message_id: m_id,
-                    sender_id: c.id().bare_id(),
+                    sender_id: Some(c.id().bare_id()),
                     sender_username: username,
                     sender_full_name: Some(full_name),
                     text: msg,

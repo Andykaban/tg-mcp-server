@@ -16,7 +16,7 @@ pub struct TgDialogOutputItem {
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct TgMessageOutputItem {
     pub message_id: i32,
-    pub sender_id: i64,
+    pub sender_id: Option<i64>,
     pub sender_username: Option<String>,
     pub sender_full_name: Option<String>,
     pub reply_to_message_id: Option<i32>,
@@ -32,16 +32,6 @@ pub struct TgParticipantOutputItem {
     pub is_premium: bool,
     pub phone_number: Option<String>,
     pub role: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct TgCommentOutputItem {
-    pub message_id: i32,
-    pub sender_id: Option<i64>,
-    pub sender_username: Option<String>,
-    pub sender_full_name: Option<String>,
-    pub text: String,
-    pub reply_to_message_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
