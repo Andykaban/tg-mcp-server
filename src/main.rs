@@ -11,8 +11,6 @@ use std::path::Path;
 use tokio::runtime;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-const SESSION_FILE: &str = "tg_mcp_server.session";
-
 #[derive(Parser)]
 #[command(version)]
 struct Cli {
@@ -31,6 +29,7 @@ struct TgConfig {
     tg_api_id: i32,
     tg_api_hash: String,
     phone_number: String,
+    session_file: Option<String>,
 }
 
 fn read_tg_config_from_file<P: AsRef<Path>>(path: P) -> Result<TgConfig> {
@@ -53,11 +52,14 @@ async fn async_main(config: TgConfig, transport: String, bind_address: String) -
                 .with_line_number(false),
         )
         .init();
+    let session_file = config
+        .session_file
+        .unwrap_or("tg_mcp_server.session".to_string());
     let tg_client = TgClient::new(
         config.tg_api_id,
         &config.tg_api_hash,
         &config.phone_number,
-        SESSION_FILE,
+        &session_file,
     )
     .await?;
     match transport.as_str() {
