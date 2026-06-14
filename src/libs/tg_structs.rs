@@ -59,11 +59,19 @@ pub struct SearchPeerRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PeerLimitRequest {
+pub struct PeerDataRequest {
     #[schemars(
-        description = "Telegram peer selector. Identifies the user, group, or channel whose message history should be read."
+        description = "How to resolve the Telegram peer. Must be either 'id' or 'username'."
     )]
-    pub peer: GetPeerRequest,
+    pub peer_kind: String,
+
+    #[schemars(
+        description = "Telegram username, with or without leading @. Required when peer_kind is 'username'."
+    )]
+    pub peer_username: Option<String>,
+
+    #[schemars(description = "Telegram peer id. Required when peer_kind is 'id'.")]
+    pub peer_id: Option<i64>,
 
     #[schemars(description = "Maximum number of items to return.")]
     pub limit: usize,
@@ -73,9 +81,17 @@ pub struct PeerLimitRequest {
 #[serde(rename_all = "snake_case")]
 pub struct GetPostCommentsRequest {
     #[schemars(
-        description = "Telegram peer selector. Identifies the channel containing the target post."
+        description = "How to resolve the Telegram peer. Must be either 'id' or 'username'."
     )]
-    pub peer: GetPeerRequest,
+    pub peer_kind: String,
+
+    #[schemars(
+        description = "Telegram username, with or without leading @. Required when peer_kind is 'username'."
+    )]
+    pub peer_username: Option<String>,
+
+    #[schemars(description = "Telegram peer id. Required when peer_kind is 'id'.")]
+    pub peer_id: Option<i64>,
 
     #[schemars(description = "Identifier of the channel post whose comments should be retrieved.")]
     pub message_id: i32,
@@ -88,9 +104,17 @@ pub struct GetPostCommentsRequest {
 #[serde(rename_all = "snake_case")]
 pub struct GetSearchMessagesRequest {
     #[schemars(
-        description = "Telegram peer selector. Identifies the user, group, or channel where messages should be searched."
+        description = "How to resolve the Telegram peer. Must be either 'id' or 'username'."
     )]
-    pub peer: GetPeerRequest,
+    pub peer_kind: String,
+
+    #[schemars(
+        description = "Telegram username, with or without leading @. Required when peer_kind is 'username'."
+    )]
+    pub peer_username: Option<String>,
+
+    #[schemars(description = "Telegram peer id. Required when peer_kind is 'id'.")]
+    pub peer_id: Option<i64>,
 
     #[schemars(
         description = "Search query text used to find matching messages in the selected Telegram peer."
@@ -106,9 +130,17 @@ pub struct GetSearchMessagesRequest {
 #[serde(rename_all = "snake_case")]
 pub struct SendMessageRequest {
     #[schemars(
-        description = "Telegram peer selector. Identifies the user, group, or channel where the message should be sent."
+        description = "How to resolve the Telegram peer. Must be either 'id' or 'username'."
     )]
-    pub peer: GetPeerRequest,
+    pub peer_kind: String,
+
+    #[schemars(
+        description = "Telegram username, with or without leading @. Required when peer_kind is 'username'."
+    )]
+    pub peer_username: Option<String>,
+
+    #[schemars(description = "Telegram peer id. Required when peer_kind is 'id'.")]
+    pub peer_id: Option<i64>,
 
     #[schemars(description = "Text message content to send to the selected Telegram peer.")]
     pub message: String,
@@ -123,9 +155,17 @@ pub struct SendMessageRequest {
 #[serde(rename_all = "snake_case")]
 pub struct SendPostComment {
     #[schemars(
-        description = "Telegram channel selector. Identifies the channel containing the target post."
+        description = "How to resolve the Telegram peer. Must be either 'id' or 'username'."
     )]
-    pub peer: GetPeerRequest,
+    pub peer_kind: String,
+
+    #[schemars(
+        description = "Telegram username, with or without leading @. Required when peer_kind is 'username'."
+    )]
+    pub peer_username: Option<String>,
+
+    #[schemars(description = "Telegram peer id. Required when peer_kind is 'id'.")]
+    pub peer_id: Option<i64>,
 
     #[schemars(description = "Identifier of the channel post to comment on.")]
     pub message_id: i32,

@@ -1,6 +1,6 @@
 use crate::libs::tg_client::TgClient;
 use crate::libs::tg_structs::{
-    GetPeerRequest, GetPostCommentsRequest, GetSearchMessagesRequest, PeerLimitRequest,
+    GetPeerRequest, GetPostCommentsRequest, GetSearchMessagesRequest, PeerDataRequest,
     SearchPeerRequest, SendMessageRequest, SendPostComment,
 };
 use rmcp::transport::streamable_http_server::{
@@ -145,7 +145,7 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let total_search_count = self
             .client
-            .get_search_messages_count(req.peer.kind, req.peer.username, req.peer.id, req.query)
+            .get_search_messages_count(req.peer_kind, req.peer_username, req.peer_id, req.query)
             .await;
         match total_search_count {
             Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
@@ -160,11 +160,11 @@ impl TelegramMcpServer {
     )]
     async fn get_text_messages(
         &self,
-        Parameters(req): Parameters<PeerLimitRequest>,
+        Parameters(req): Parameters<PeerDataRequest>,
     ) -> Result<CallToolResult, McpError> {
         let text_messages = self
             .client
-            .get_messages(req.peer.kind, req.peer.username, req.peer.id, req.limit)
+            .get_messages(req.peer_kind, req.peer_username, req.peer_id, req.limit)
             .await;
         match text_messages {
             Ok(t) => Ok(CallToolResult::success(vec![Content::text(
@@ -184,9 +184,9 @@ impl TelegramMcpServer {
         let search_messages = self
             .client
             .get_search_messages(
-                req.peer.kind,
-                req.peer.username,
-                req.peer.id,
+                req.peer_kind,
+                req.peer_username,
+                req.peer_id,
                 req.query,
                 req.limit,
             )
@@ -204,11 +204,11 @@ impl TelegramMcpServer {
     )]
     async fn get_participants(
         &self,
-        Parameters(req): Parameters<PeerLimitRequest>,
+        Parameters(req): Parameters<PeerDataRequest>,
     ) -> Result<CallToolResult, McpError> {
         let participants = self
             .client
-            .get_participants(req.peer.kind, req.peer.username, req.peer.id, req.limit)
+            .get_participants(req.peer_kind, req.peer_username, req.peer_id, req.limit)
             .await;
         match participants {
             Ok(p) => Ok(CallToolResult::success(vec![Content::text(
@@ -228,9 +228,9 @@ impl TelegramMcpServer {
         let send_status = self
             .client
             .send_message(
-                req.peer.kind,
-                req.peer.username,
-                req.peer.id,
+                req.peer_kind,
+                req.peer_username,
+                req.peer_id,
                 req.message,
                 req.reply_to_message_id,
             )
@@ -253,9 +253,9 @@ impl TelegramMcpServer {
         let post_comments = self
             .client
             .get_post_comments(
-                req.peer.kind,
-                req.peer.username,
-                req.peer.id,
+                req.peer_kind,
+                req.peer_username,
+                req.peer_id,
                 req.message_id,
                 req.limit,
             )
@@ -278,9 +278,9 @@ impl TelegramMcpServer {
         let send_status = self
             .client
             .add_post_comment(
-                req.peer.kind,
-                req.peer.username,
-                req.peer.id,
+                req.peer_kind,
+                req.peer_username,
+                req.peer_id,
                 req.message_id,
                 req.post_comment,
             )
