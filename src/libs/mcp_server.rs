@@ -19,6 +19,8 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct TelegramMcpServer {
     client: Arc<TgClient>,
+
+    #[allow(dead_code)]
     tool_router: ToolRouter<TelegramMcpServer>,
 }
 

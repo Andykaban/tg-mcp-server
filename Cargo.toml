@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1"
+anyhow = "1.0.103"
 grammers-client = "0.9.0"
 grammers-session = "0.9.0"
 grammers-tl-types = "0.9.0"
@@ -15,7 +15,7 @@ serde_json = "1.0.150"
 schemars = "1.0"
 clap = { version = "4.6.1", features = ["derive"] }
 rand = "0.10.1"
-rmcp = { version = "1.7.0", features = [
+rmcp = { version = "1.8.0", features = [
     "server",
     "macros",
     "client",
