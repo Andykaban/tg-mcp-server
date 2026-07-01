@@ -9,7 +9,7 @@ use rmcp::transport::streamable_http_server::{
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, Content, ServerCapabilities, ServerInfo},
+    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
     transport::stdio,
 };
@@ -37,7 +37,7 @@ impl TelegramMcpServer {
         description = "Health check: returns service status to confirm the MCP server is running."
     )]
     async fn is_alive(&self) -> Result<CallToolResult, McpError> {
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             "Telegram MCP is running".to_string(),
         )]))
     }
@@ -47,7 +47,7 @@ impl TelegramMcpServer {
     )]
     async fn is_authorized(&self) -> Result<CallToolResult, McpError> {
         let is_auth = self.client.is_authorized().await.unwrap_or(false);
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             json!({"is_authorized": is_auth}).to_string(),
         )]))
     }
@@ -58,10 +58,12 @@ impl TelegramMcpServer {
     async fn get_all_dialogs(&self) -> Result<CallToolResult, McpError> {
         let dialogs = self.client.get_dialogs().await;
         match dialogs {
-            Ok(d) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(d) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"dialogs": d}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -77,10 +79,12 @@ impl TelegramMcpServer {
             .get_peer_info(req.kind, req.username, req.id)
             .await;
         match peer_data {
-            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(p) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"peer": p}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -93,10 +97,12 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let found_peers = self.client.search_peer(req.query, req.limit).await;
         match found_peers {
-            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(p) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"found_peers": p}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -112,10 +118,12 @@ impl TelegramMcpServer {
             .get_messages_count(req.kind, req.username, req.id)
             .await;
         match total_messages_count {
-            Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(cnt) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"total_messages_count": cnt}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -131,10 +139,12 @@ impl TelegramMcpServer {
             .get_participants_count(req.kind, req.username, req.id)
             .await;
         match total_participants_count {
-            Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(cnt) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"total_participants_count": cnt}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -150,10 +160,12 @@ impl TelegramMcpServer {
             .get_search_messages_count(req.peer_kind, req.peer_username, req.peer_id, req.query)
             .await;
         match total_search_count {
-            Ok(cnt) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(cnt) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"total_search_count": cnt}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -169,10 +181,12 @@ impl TelegramMcpServer {
             .get_messages(req.peer_kind, req.peer_username, req.peer_id, req.limit)
             .await;
         match text_messages {
-            Ok(t) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(t) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"text_messages": t}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -194,10 +208,12 @@ impl TelegramMcpServer {
             )
             .await;
         match search_messages {
-            Ok(t) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(t) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"text_messages": t}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -213,10 +229,12 @@ impl TelegramMcpServer {
             .get_participants(req.peer_kind, req.peer_username, req.peer_id, req.limit)
             .await;
         match participants {
-            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(p) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"participants": p}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -238,10 +256,12 @@ impl TelegramMcpServer {
             )
             .await;
         match send_status {
-            Ok(_) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(_) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"send_status": true}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -263,10 +283,12 @@ impl TelegramMcpServer {
             )
             .await;
         match post_comments {
-            Ok(p) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(p) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"comments": p}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 
@@ -288,10 +310,12 @@ impl TelegramMcpServer {
             )
             .await;
         match send_status {
-            Ok(_) => Ok(CallToolResult::success(vec![Content::text(
+            Ok(_) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 json!({"send_status": true}).to_string(),
             )])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                e.to_string(),
+            )])),
         }
     }
 }

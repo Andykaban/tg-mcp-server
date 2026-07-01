@@ -81,7 +81,7 @@ Options:
 | Option | Description |
 |----------|-------------|
 | `--config-path` | Path to configuration file |
-| `--transport` | MCP transport (`stdio` or `streamable-http`) |
+| `--transport` | MCP transport (`stdio` or `http`) |
 | `--mcp-host` | Host address used by HTTP transport |
 | `--mcp-port` | Port used by HTTP transport |
 
@@ -102,7 +102,7 @@ tg-mcp-server \
 ```bash
 tg-mcp-server \
     --config-path ./config.json \
-    --transport streamable-http \
+    --transport http \
     --mcp-host 127.0.0.1 \
     --mcp-port 9050
 ```
