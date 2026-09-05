@@ -157,7 +157,7 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let total_search_count = self
             .client
-            .get_search_messages_count(req.peer_kind, req.peer_username, req.peer_id, req.query)
+            .get_messages_count_by_query(req.peer_kind, req.peer_username, req.peer_id, req.query)
             .await;
         match total_search_count {
             Ok(cnt) => Ok(CallToolResult::success(vec![ContentBlock::text(
@@ -199,7 +199,7 @@ impl TelegramMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let search_messages = self
             .client
-            .get_search_messages(
+            .get_messages_by_query(
                 req.peer_kind,
                 req.peer_username,
                 req.peer_id,

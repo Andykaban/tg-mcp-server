@@ -190,7 +190,7 @@ impl TgClient {
         Ok(messages_count)
     }
 
-    pub async fn get_search_messages_count(
+    pub async fn get_messages_count_by_query(
         &self,
         kind: String,
         username: Option<String>,
@@ -263,7 +263,7 @@ impl TgClient {
         Ok(result)
     }
 
-    pub async fn get_search_messages(
+    pub async fn get_messages_by_query(
         &self,
         kind: String,
         username: Option<String>,
