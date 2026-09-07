@@ -21,6 +21,7 @@ pub struct TgMessageOutputItem {
     pub sender_full_name: Option<String>,
     pub reply_to_message_id: Option<i32>,
     pub text: String,
+    pub timestamp: i64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]

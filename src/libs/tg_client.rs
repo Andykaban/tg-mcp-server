@@ -573,6 +573,7 @@ impl TgClient {
                 sender_id,
                 sender_username,
                 sender_full_name,
+                timestamp: i64::from(msg.date),
                 text: msg.message.clone(),
                 reply_to_message_id: msg.reply_to.as_ref().and_then(|r| match r {
                     tl_types::enums::MessageReplyHeader::Header(h) => h.reply_to_msg_id,
@@ -621,6 +622,7 @@ impl TgClient {
     ) -> Result<TgMessageOutputItem> {
         let m_id = message.id();
         let msg = message.text().to_string();
+        let timestamp = message.date().timestamp();
         let reply = message.reply_to_message_id();
         match peer {
             Peer::User(u) => {
@@ -633,6 +635,7 @@ impl TgClient {
                     sender_full_name: Some(full_name),
                     text: msg,
                     reply_to_message_id: reply,
+                    timestamp,
                 };
                 return Ok(m_item);
             }
@@ -646,6 +649,7 @@ impl TgClient {
                     sender_full_name: full_name,
                     text: msg,
                     reply_to_message_id: reply,
+                    timestamp,
                 };
                 return Ok(m_item);
             }
@@ -659,6 +663,7 @@ impl TgClient {
                     sender_full_name: Some(full_name),
                     text: msg,
                     reply_to_message_id: reply,
+                    timestamp,
                 };
                 return Ok(m_item);
             }
